@@ -1,11 +1,10 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:logger/logger.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app.dart';
+import '../db/database_helper.dart';
 import 'settings_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -20,7 +19,9 @@ class _SplashScreenState extends State<SplashScreen> {
   final _uidController = TextEditingController();
   final _tokenController = TextEditingController();
   StreamSubscription<Position>? _positionStreamSubscription;
+  DatabaseHelper db = DatabaseHelper.instance;
   String _uid = '';
+  final List<String> _locations = [];
 
   @override
   void initState() {
@@ -218,6 +219,44 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
           ),
+          if (_locations.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.gps_fixed, color: MyApp.ecoGreen),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Location Updates',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 160,
+                      child: ListView.builder(
+                        itemCount: _locations.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.location_on, size: 18),
+                            title: Text(
+                              _locations[index],
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -265,7 +304,13 @@ class _SplashScreenState extends State<SplashScreen> {
     }
     _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (Position position) {
-        writePositionToFile(position);
+        db.insertCoordinate(position);
+        final timestamp = DateTime.now().toIso8601String();
+        final locationEntry =
+            '$timestamp\nLat: ${position.latitude.toStringAsFixed(4)}, Long: ${position.longitude.toStringAsFixed(4)}';
+        setState(() {
+          _locations.insert(0, locationEntry);
+        });
       },
     );
   }
@@ -273,13 +318,6 @@ class _SplashScreenState extends State<SplashScreen> {
   void stopTracking() {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = null;
-  }
-
-  Future<void> writePositionToFile(Position position) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/gps_coordinates.csv');
-    String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    await file.writeAsString('${timestamp};${position.latitude};${position.longitude}\n', mode: FileMode.append);
   }
 
   @override
