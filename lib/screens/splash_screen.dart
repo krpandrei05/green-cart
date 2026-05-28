@@ -206,13 +206,11 @@ class _SplashScreenState extends State<SplashScreen> {
                   Switch(
                     value: tracking,
                     onChanged: (value) {
-                      setState(() {
-                        if (value) {
-                          startTracking();
-                        } else {
-                          stopTracking();
-                        }
-                      });
+                      if (value) {
+                        startTracking();
+                      } else {
+                        stopTracking();
+                      }
                     },
                   ),
                 ],
@@ -313,11 +311,13 @@ class _SplashScreenState extends State<SplashScreen> {
         });
       },
     );
+    if (mounted) setState(() {});
   }
 
   void stopTracking() {
     _positionStreamSubscription?.cancel();
     _positionStreamSubscription = null;
+    if (mounted) setState(() {});
   }
 
   @override

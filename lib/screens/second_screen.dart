@@ -27,6 +27,7 @@ class _SecondScreenState extends State<SecondScreen> {
     List<Map<String, dynamic>> dbCoords = await DatabaseHelper.instance.getCoordinates();
     setState(() {
       _dbCoordinates = dbCoords.map((c) => [
+        c['id'].toString(),
         c['timestamp'].toString(),
         c['latitude'].toString(),
         c['longitude'].toString()
@@ -39,6 +40,7 @@ class _SecondScreenState extends State<SecondScreen> {
     List<Map<String, dynamic>> dbCoords = await DatabaseHelper.instance.getCoordinates();
     setState(() {
       _dbCoordinates = dbCoords.map((c) => [
+        c['id'].toString(),
         c['timestamp'].toString(),
         c['latitude'].toString(),
         c['longitude'].toString()
@@ -46,12 +48,12 @@ class _SecondScreenState extends State<SecondScreen> {
     });
   }
 
-  void _showDeleteDialog(String timestamp) {
+  void _showDeleteDialog(int id) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Confirm delete $timestamp"),
+          title: Text("Confirm delete"),
           content: Text("Do you want to delete this coordinate?"),
           actions: <Widget>[
             TextButton(
@@ -61,7 +63,7 @@ class _SecondScreenState extends State<SecondScreen> {
             TextButton(
               child: Text("Delete"),
               onPressed: () async {
-                await DatabaseHelper.instance.deleteCoordinate(timestamp);
+                await DatabaseHelper.instance.deleteCoordinate(id);
                 Navigator.of(context).pop();
                 _loadDbCoordinatesAndUpdate();
               },
@@ -101,7 +103,7 @@ class _SecondScreenState extends State<SecondScreen> {
     }
   }
 
-  void _showUpdateDialog(String timestamp, String currentLat, String currentLong) {
+  void _showUpdateDialog(int id, String currentLat, String currentLong) {
     TextEditingController latController = TextEditingController(text: currentLat);
     TextEditingController longController = TextEditingController(text: currentLong);
 
@@ -109,7 +111,7 @@ class _SecondScreenState extends State<SecondScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Update coordinates for $timestamp"),
+          title: Text("Update coordinates"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -134,7 +136,7 @@ class _SecondScreenState extends State<SecondScreen> {
               child: Text("Update"),
               onPressed: () async {
                 Navigator.of(context).pop();
-                await DatabaseHelper.instance.updateCoordinate(timestamp, latController.text, longController.text);
+                await DatabaseHelper.instance.updateCoordinate(id, latController.text, longController.text);
                 _loadDbCoordinatesAndUpdate();
               },
             ),
@@ -193,18 +195,18 @@ class _SecondScreenState extends State<SecondScreen> {
                   itemBuilder: (context, index) {
                     var coord = _dbCoordinates[index];
                     var formattedDate = DateFormat('dd/MM/yyyy HH:mm')
-                        .format(DateTime.fromMillisecondsSinceEpoch(int.parse(coord[0])));
+                        .format(DateTime.fromMillisecondsSinceEpoch(int.parse(coord[1])));
                     return Card(
                       child: ListTile(
                         leading: Icon(Icons.store, color: MyApp.ecoGreen),
                         title: Text('Check-in #${_dbCoordinates.length - index}'),
                         subtitle: Text(
-                          '$formattedDate\nLat: ${coord[1]}, Lng: ${coord[2]}',
+                          '$formattedDate\nLat: ${coord[2]}, Lng: ${coord[3]}',
                         ),
                         trailing: Text('+5 XP', style: TextStyle(color: MyApp.ecoGreen)),
                         isThreeLine: true,
-                        onTap: () => _showDeleteDialog(coord[0]),
-                        onLongPress: () => _showUpdateDialog(coord[0], coord[1], coord[2]),
+                        onTap: () => _showDeleteDialog(int.parse(coord[0])),
+                        onLongPress: () => _showUpdateDialog(int.parse(coord[0]), coord[2], coord[3]),
                       ),
                     );
                   },

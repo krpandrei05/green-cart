@@ -46,22 +46,22 @@ class DatabaseHelper {
     return await db.query('coordinates');
   }
 
-  Future<void> deleteCoordinate(String timestamp) async {
+  Future<void> deleteCoordinate(int id) async {
     final db = await database;
     await db.delete(
       'coordinates',
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 
-  Future<void> updateCoordinate(String timestamp, String newLat, String newLong) async {
+  Future<void> updateCoordinate(int id, String newLat, String newLong) async {
     final db = await database;
     await db.update(
       'coordinates',
       {'latitude': newLat, 'longitude': newLong},
-      where: 'timestamp = ?',
-      whereArgs: [timestamp],
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 }

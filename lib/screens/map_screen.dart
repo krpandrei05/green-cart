@@ -19,10 +19,36 @@ class _MapScreenState extends State<MapScreen> {
 
   static const LatLng _madridCenter = LatLng(40.4168, -3.7038);
 
+  // Limites de zoom (les tuiles OSM sont disponibles ~z3 à z19).
+  static const double _minZoom = 3;
+  static const double _maxZoom = 18;
+
+  // Points d'intérêt fixes à Madrid, toujours affichés sur la carte.
+  static const List<({String label, LatLng point})> _madridPois = [
+    (label: 'Puerta del Sol', point: LatLng(40.4169, -3.7033)),
+    (label: 'Plaza Mayor', point: LatLng(40.4155, -3.7074)),
+    (label: 'Palacio Real', point: LatLng(40.4180, -3.7144)),
+    (label: 'Parque del Retiro', point: LatLng(40.4153, -3.6845)),
+    (label: 'Gran Vía', point: LatLng(40.4200, -3.7025)),
+    (label: 'Atocha', point: LatLng(40.4067, -3.6896)),
+  ];
+
   @override
   void initState() {
     super.initState();
     _loadMarkers();
+  }
+
+  // Zoom programmatique via MapController (flutter_map v7) :
+  // on relit le zoom courant de la caméra et on le recadre dans [min, max].
+  void _zoomIn() {
+    final z = (_mapController.camera.zoom + 1).clamp(_minZoom, _maxZoom);
+    _mapController.move(_mapController.camera.center, z);
+  }
+
+  void _zoomOut() {
+    final z = (_mapController.camera.zoom - 1).clamp(_minZoom, _maxZoom);
+    _mapController.move(_mapController.camera.center, z);
   }
 
   Future<void> _loadMarkers() async {
@@ -82,6 +108,8 @@ class _MapScreenState extends State<MapScreen> {
             options: MapOptions(
               initialCenter: initialCenter,
               initialZoom: 14,
+              minZoom: _minZoom,
+              maxZoom: _maxZoom,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
@@ -106,6 +134,54 @@ class _MapScreenState extends State<MapScreen> {
                     'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c'],
                 userAgentPackageName: 'es.upm.mad.greencart',
+              ),
+              // Points d'intérêt fixes de Madrid (toujours visibles).
+              MarkerLayer(
+                markers: _madridPois
+                    .map(
+                      (poi) => Marker(
+                        point: poi.point,
+                        width: 90,
+                        height: 52,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                poi.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            const Icon(
+                              Icons.place,
+                              color: MyApp.ecoGreen,
+                              size: 30,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
               if (route.length >= 2)
                 PolylineLayer(
@@ -135,30 +211,35 @@ class _MapScreenState extends State<MapScreen> {
                   }
                   return Marker(
                     point: coord,
-                    width: size,
-                    height: size + 20,
-                    child: Column(
-                      children: [
-                        if (isFirst)
-                          const Text(
-                            'Start',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                    width: 80,
+                    height: size + 22,
+                    alignment: Alignment.topCenter,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isFirst)
+                            const Text(
+                              'Start',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
                             ),
-                          ),
-                        if (isLast)
-                          const Text(
-                            'End',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                          if (isLast)
+                            const Text(
+                              'End',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
                             ),
-                          ),
-                        Icon(Icons.location_on, color: color, size: size),
-                      ],
+                          Icon(Icons.location_on, color: color, size: size),
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
@@ -208,17 +289,42 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
-          if (_coordinates.isNotEmpty)
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton.small(
-                heroTag: 'recenter',
-                backgroundColor: MyApp.ecoGreen,
-                onPressed: () => _mapController.move(_coordinates.last, 15),
-                child: const Icon(Icons.my_location, color: Colors.white),
-              ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'zoomIn',
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  tooltip: 'Zoom avant',
+                  onPressed: _zoomIn,
+                  child: const Icon(Icons.add),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'zoomOut',
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  tooltip: 'Zoom arrière',
+                  onPressed: _zoomOut,
+                  child: const Icon(Icons.remove),
+                ),
+                if (_coordinates.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  FloatingActionButton.small(
+                    heroTag: 'recenter',
+                    backgroundColor: MyApp.ecoGreen,
+                    tooltip: 'Recentrer',
+                    onPressed: () => _mapController.move(_coordinates.last, 15),
+                    child: const Icon(Icons.my_location, color: Colors.white),
+                  ),
+                ],
+              ],
             ),
+          ),
         ],
       ),
     );
