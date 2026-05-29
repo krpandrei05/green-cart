@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase service files (contain project keys — keep out of VCS, all platforms)
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Ruflo / claude-flow local working files (not part of the app)
+.claude-flow/
+*.rvf
+*.rvf.lock
+ruvector.db
+
+lib/exercices_w3/
+CLAUDE.md

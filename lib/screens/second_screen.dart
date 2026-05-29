@@ -117,11 +117,15 @@ class _SecondScreenState extends State<SecondScreen> {
             children: <Widget>[
               TextField(
                 controller: latController,
-                decoration: InputDecoration(labelText: "Latitude"),
+                keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true, signed: true),
+                decoration: const InputDecoration(labelText: "Latitude"),
               ),
               TextField(
                 controller: longController,
-                decoration: InputDecoration(labelText: "Longitude"),
+                keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true, signed: true),
+                decoration: const InputDecoration(labelText: "Longitude"),
               ),
             ],
           ),
@@ -135,8 +139,20 @@ class _SecondScreenState extends State<SecondScreen> {
             TextButton(
               child: Text("Update"),
               onPressed: () async {
+                final lat = double.tryParse(latController.text.trim());
+                final lng = double.tryParse(longController.text.trim());
+                if (lat == null || lng == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Enter valid numbers (use "." for decimals).'),
+                    ),
+                  );
+                  return;
+                }
                 Navigator.of(context).pop();
-                await DatabaseHelper.instance.updateCoordinate(id, latController.text, longController.text);
+                await DatabaseHelper.instance
+                    .updateCoordinate(id, lat.toString(), lng.toString());
                 _loadDbCoordinatesAndUpdate();
               },
             ),

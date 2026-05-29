@@ -53,13 +53,24 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _loadMarkers() async {
     final dbCoords = await DatabaseHelper.instance.getCoordinates();
-    final coords = dbCoords
-        .map((c) => LatLng(c['latitude'] as double, c['longitude'] as double))
-        .toList();
+    final coords = <LatLng>[];
+    for (final c in dbCoords) {
+      final lat = _asDouble(c['latitude']);
+      final lng = _asDouble(c['longitude']);
+      if (lat != null && lng != null) coords.add(LatLng(lat, lng));
+    }
     setState(() {
       _coordinates = coords;
       _loading = false;
     });
+  }
+
+  // A row may come back as num (normal) or as String if a bad value was ever
+  // written; tolerate both and skip anything unparseable so the map never
+  // crashes on `as double`.
+  double? _asDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
   }
 
   List<LatLng> _lastRoute(List<LatLng> all) {

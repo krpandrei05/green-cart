@@ -51,6 +51,8 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   share_plus: ^10.1.4
+  firebase_core: ^4.9.0
+  firebase_auth: ^6.5.1
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +64,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.4.0+3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

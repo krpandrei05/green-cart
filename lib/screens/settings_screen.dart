@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  _SettingsScreenState createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
@@ -46,7 +47,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('EcoScan Settings'),
+        title: const Text('EcoScan Settings'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () {
+              // Pop Settings off the root stack first, then sign out: the
+              // auth-gate StreamBuilder in app.dart then shows LoginScreen.
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              FirebaseAuth.instance.signOut();
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _prefsFuture,
@@ -67,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${entry.key} updated'),
-                          duration: Duration(seconds: 2),
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     },
@@ -76,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }).toList(),
             );
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),
