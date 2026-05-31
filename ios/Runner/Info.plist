@@ -10,6 +10,8 @@
 	<string>This app needs access to location at all times to track your position.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app needs access to location.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs the camera to scan product barcodes.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/game_stats.dart';
+import '../models/product.dart';
 
 class DatabaseHelper {
   DatabaseHelper._privateConstructor();
@@ -19,49 +21,100 @@ class DatabaseHelper {
     return await openDatabase(
       join(path, 'coordinate_database.db'),
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE coordinates(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            latitude REAL,
-            longitude REAL
-          )
-        ''');
+        await _createScansTable(db);
       },
-      version: 1,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _createScansTable(db);
+        }
+      },
+      version: 2,
     );
   }
 
-  Future<void> insertCoordinate(Position position) async {
+  Future<void> _createScansTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS scans(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        barcode TEXT,
+        name TEXT,
+        eco_grade TEXT,
+        eco_score INTEGER,
+        nutri_grade TEXT,
+        latitude REAL,
+        longitude REAL,
+        timestamp TEXT
+      )
+    ''');
+  }
+
+  Future<void> insertScan(Product product,
+      {double? latitude, double? longitude}) async {
     final db = await database;
-    await db.insert('coordinates', {
+    await db.insert('scans', {
+      'barcode': product.barcode,
+      'name': product.name,
+      'eco_grade': product.ecoGrade,
+      'eco_score': product.ecoScore,
+      'nutri_grade': product.nutriGrade,
+      'latitude': latitude,
+      'longitude': longitude,
       'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-      'latitude': position.latitude,
-      'longitude': position.longitude
     });
   }
 
-  Future<List<Map<String, dynamic>>> getCoordinates() async {
+  Future<List<Map<String, dynamic>>> getScans() async {
     final db = await database;
-    return await db.query('coordinates');
+    return await db.query('scans');
   }
 
-  Future<void> deleteCoordinate(int id) async {
-    final db = await database;
-    await db.delete(
-      'coordinates',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future<void> updateCoordinate(int id, String newLat, String newLong) async {
+  Future<void> updateScan(int id, String newName) async {
     final db = await database;
     await db.update(
-      'coordinates',
-      {'latitude': newLat, 'longitude': newLong},
+      'scans',
+      {'name': newName},
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<void> deleteScan(int id) async {
+    final db = await database;
+    await db.delete('scans', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<GameStats> computeGameStats() async {
+    final scanRows = await getScans();
+    final scanTimestamps = <DateTime>[];
+    var sustainable = 0;
+    for (final row in scanRows) {
+      final ms = int.tryParse(row['timestamp']?.toString() ?? '');
+      if (ms != null) {
+        scanTimestamps.add(DateTime.fromMillisecondsSinceEpoch(ms));
+      }
+      final grade = (row['eco_grade'] ?? '').toString().toLowerCase();
+      if (grade == 'a' || grade == 'b') sustainable++;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final persisted =
+        prefs.getStringList('unlocked_badges')?.toSet() ?? <String>{};
+    return GameStats.fromScans(
+      scanTimestamps,
+      sustainableScans: sustainable,
+      persistedBadges: persisted,
+    );
+  }
+
+  Future<Set<String>> awardBadges(GameStats stats) async {
+    final prefs = await SharedPreferences.getInstance();
+    final persisted =
+        prefs.getStringList('unlocked_badges')?.toSet() ?? <String>{};
+    // drop unknown badge ids
+    final clean = stats.badges.intersection(GameStats.badgeLabels.keys.toSet());
+    final newly = clean.difference(persisted);
+    if (newly.isNotEmpty) {
+      await prefs.setStringList('unlocked_badges', clean.toList());
+    }
+    return newly;
   }
 }

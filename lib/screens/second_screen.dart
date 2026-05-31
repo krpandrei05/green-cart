@@ -14,37 +14,20 @@ class SecondScreen extends StatefulWidget {
 }
 
 class _SecondScreenState extends State<SecondScreen> {
-  List<List<String>> _dbCoordinates = [];
+  List<Map<String, dynamic>> _scans = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadDbCoordinates();
+    _loadScans();
   }
 
-  Future<void> _loadDbCoordinates() async {
-    List<Map<String, dynamic>> dbCoords = await DatabaseHelper.instance.getCoordinates();
+  Future<void> _loadScans() async {
+    final scans = await DatabaseHelper.instance.getScans();
     setState(() {
-      _dbCoordinates = dbCoords.map((c) => [
-        c['id'].toString(),
-        c['timestamp'].toString(),
-        c['latitude'].toString(),
-        c['longitude'].toString()
-      ]).toList().reversed.toList();
+      _scans = scans.reversed.toList();
       _loading = false;
-    });
-  }
-
-  void _loadDbCoordinatesAndUpdate() async {
-    List<Map<String, dynamic>> dbCoords = await DatabaseHelper.instance.getCoordinates();
-    setState(() {
-      _dbCoordinates = dbCoords.map((c) => [
-        c['id'].toString(),
-        c['timestamp'].toString(),
-        c['latitude'].toString(),
-        c['longitude'].toString()
-      ]).toList().reversed.toList();
     });
   }
 
@@ -54,7 +37,7 @@ class _SecondScreenState extends State<SecondScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text("Confirm delete"),
-          content: Text("Do you want to delete this coordinate?"),
+          content: Text("Do you want to delete this scan?"),
           actions: <Widget>[
             TextButton(
               child: Text("Cancel"),
@@ -63,9 +46,40 @@ class _SecondScreenState extends State<SecondScreen> {
             TextButton(
               child: Text("Delete"),
               onPressed: () async {
-                await DatabaseHelper.instance.deleteCoordinate(id);
+                await DatabaseHelper.instance.deleteScan(id);
                 Navigator.of(context).pop();
-                _loadDbCoordinatesAndUpdate();
+                _loadScans();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRenameDialog(int id, String currentName) {
+    TextEditingController nameController =
+        TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Rename product"),
+          content: TextField(
+            controller: nameController,
+            decoration: InputDecoration(labelText: "Product name"),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: Text("Save"),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await DatabaseHelper.instance.updateScan(id, nameController.text);
+                _loadScans();
               },
             ),
           ],
@@ -75,25 +89,26 @@ class _SecondScreenState extends State<SecondScreen> {
   }
 
   Future<void> _shareCsv() async {
-    final dbCoords = await DatabaseHelper.instance.getCoordinates();
+    final scans = await DatabaseHelper.instance.getScans();
     if (!mounted) return;
-    if (dbCoords.isEmpty) {
+    if (scans.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No check-ins to share yet.')),
+        const SnackBar(content: Text('No scans to share yet.')),
       );
       return;
     }
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/eco_checkins.csv');
-      final buffer = StringBuffer('timestamp;latitude;longitude\n');
-      for (final c in dbCoords) {
-        buffer.writeln('${c['timestamp']};${c['latitude']};${c['longitude']}');
+      final file = File('${directory.path}/eco_scans.csv');
+      final buffer = StringBuffer('barcode;name;eco_grade;nutri_grade;timestamp\n');
+      for (final s in scans) {
+        buffer.writeln(
+            '${s['barcode']};${s['name']};${s['eco_grade']};${s['nutri_grade']};${s['timestamp']}');
       }
       await file.writeAsString(buffer.toString());
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'EcoScan check-ins exported from green-cart',
+        text: 'EcoScan scanned products exported from green-cart',
       );
     } catch (e) {
       if (!mounted) return;
@@ -103,70 +118,11 @@ class _SecondScreenState extends State<SecondScreen> {
     }
   }
 
-  void _showUpdateDialog(int id, String currentLat, String currentLong) {
-    TextEditingController latController = TextEditingController(text: currentLat);
-    TextEditingController longController = TextEditingController(text: currentLong);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Update coordinates"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextField(
-                controller: latController,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true, signed: true),
-                decoration: const InputDecoration(labelText: "Latitude"),
-              ),
-              TextField(
-                controller: longController,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true, signed: true),
-                decoration: const InputDecoration(labelText: "Longitude"),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text("Cancel"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text("Update"),
-              onPressed: () async {
-                final lat = double.tryParse(latController.text.trim());
-                final lng = double.tryParse(longController.text.trim());
-                if (lat == null || lng == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Enter valid numbers (use "." for decimals).'),
-                    ),
-                  );
-                  return;
-                }
-                Navigator.of(context).pop();
-                await DatabaseHelper.instance
-                    .updateCoordinate(id, lat.toString(), lng.toString());
-                _loadDbCoordinatesAndUpdate();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Check-in History'),
+        title: Text('Scan History'),
         actions: [
           IconButton(
             icon: Icon(Icons.share),
@@ -177,29 +133,26 @@ class _SecondScreenState extends State<SecondScreen> {
             icon: Icon(Icons.refresh),
             onPressed: () {
               setState(() => _loading = true);
-              _loadDbCoordinates();
+              _loadScans();
             },
           ),
         ],
       ),
       body: _loading
-          ? Center(child: CircularProgressIndicator())
-          : _dbCoordinates.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : _scans.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.explore_off, size: 80, color: Colors.grey),
+                        Icon(Icons.qr_code_scanner, size: 80, color: Colors.grey),
                         SizedBox(height: 16),
-                        Text(
-                          'No check-ins yet',
-                          style: TextStyle(fontSize: 18),
-                        ),
+                        Text('No scans yet', style: TextStyle(fontSize: 18)),
                         SizedBox(height: 8),
                         Text(
-                          'Enable GPS tracking from the Home screen to log visited supermarkets.',
+                          'Scan a product from the Scan tab to start your green history.',
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -207,22 +160,37 @@ class _SecondScreenState extends State<SecondScreen> {
                   ),
                 )
               : ListView.builder(
-                  itemCount: _dbCoordinates.length,
+                  itemCount: _scans.length,
                   itemBuilder: (context, index) {
-                    var coord = _dbCoordinates[index];
-                    var formattedDate = DateFormat('dd/MM/yyyy HH:mm')
-                        .format(DateTime.fromMillisecondsSinceEpoch(int.parse(coord[1])));
+                    final s = _scans[index];
+                    final grade = (s['eco_grade'] ?? '').toString();
+                    final nutri = (s['nutri_grade'] ?? '').toString();
+                    final id = s['id'] as int;
+                    final name = s['name']?.toString() ?? 'Unknown product';
+                    String date = '';
+                    final ms = int.tryParse(s['timestamp']?.toString() ?? '');
+                    if (ms != null) {
+                      date = DateFormat('dd/MM/yyyy HH:mm')
+                          .format(DateTime.fromMillisecondsSinceEpoch(ms));
+                    }
                     return Card(
                       child: ListTile(
-                        leading: Icon(Icons.store, color: MyApp.ecoGreen),
-                        title: Text('Check-in #${_dbCoordinates.length - index}'),
-                        subtitle: Text(
-                          '$formattedDate\nLat: ${coord[2]}, Lng: ${coord[3]}',
+                        leading: CircleAvatar(
+                          backgroundColor: MyApp.gradeColor(grade),
+                          child: Text(
+                            MyApp.gradeLabel(grade),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
                         ),
-                        trailing: Text('+5 XP', style: TextStyle(color: MyApp.ecoGreen)),
+                        title: Text(name),
+                        subtitle: Text(
+                          'Eco-Score ${MyApp.gradeLabel(grade)} · Nutri ${MyApp.gradeLabel(nutri)}\n$date',
+                        ),
                         isThreeLine: true,
-                        onTap: () => _showDeleteDialog(int.parse(coord[0])),
-                        onLongPress: () => _showUpdateDialog(int.parse(coord[0]), coord[2], coord[3]),
+                        onTap: () => _showDeleteDialog(id),
+                        onLongPress: () => _showRenameDialog(id, name),
                       ),
                     );
                   },

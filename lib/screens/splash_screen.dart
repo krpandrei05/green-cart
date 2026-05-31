@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:logger/logger.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app.dart';
 import '../db/database_helper.dart';
+import '../models/game_stats.dart';
 import 'settings_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -18,16 +18,22 @@ class _SplashScreenState extends State<SplashScreen> {
   final logger = Logger();
   final _uidController = TextEditingController();
   final _tokenController = TextEditingController();
-  StreamSubscription<Position>? _positionStreamSubscription;
   DatabaseHelper db = DatabaseHelper.instance;
   String _uid = '';
-  final List<String> _locations = [];
+  late Future<GameStats> _statsFuture;
 
   @override
   void initState() {
     super.initState();
     print("initState: Initial state setup.");
+    _statsFuture = db.computeGameStats();
     _loadPrefs();
+  }
+
+  void _refreshStats() {
+    setState(() {
+      _statsFuture = db.computeGameStats();
+    });
   }
 
   @override
@@ -51,15 +57,6 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       logger.d("UID: $uid, Token: $token");
       setState(() => _uid = uid);
-    }
-    if (prefs.getString('eco_score_threshold') == null) {
-      await prefs.setString('eco_score_threshold', 'C');
-    }
-    if (prefs.getString('gps_radius_m') == null) {
-      await prefs.setString('gps_radius_m', '50');
-    }
-    if (prefs.getString('language') == null) {
-      await prefs.setString('language', 'fr');
     }
   }
 
@@ -112,19 +109,57 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
+  // share progress
+  void _shareProgress() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Wrap(
+          children: <Widget>[
+            ListTile(
+              leading: Icon(Icons.share, color: MyApp.ecoGreen),
+              title: const Text('Share my eco-progress'),
+              onTap: () async {
+                Navigator.pop(context);
+                final stats = await db.computeGameStats();
+                await Share.share(
+                  'My EcoScan Madrid progress: ${stats.xp} XP, '
+                  'Level ${stats.level}, ${stats.streak}-day streak, '
+                  '${stats.badges.length} badges. 🌱',
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     print("build: Building the user interface.");
     logger.d("Debug message");
     logger.w("Warning message!");
     logger.e("Error message!!");
-    final tracking = _positionStreamSubscription != null;
     return Scaffold(
+      backgroundColor: MyApp.ecoBackground,
       appBar: AppBar(
-        title: Text('EcoScan Madrid'),
+        title: const Text('EcoScan Madrid'),
+        backgroundColor: MyApp.ecoGreen,
+        foregroundColor: Colors.white,
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.settings),
+            icon: const Icon(Icons.share),
+            tooltip: 'Share progress',
+            onPressed: _shareProgress,
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _refreshStats,
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
                 context,
@@ -134,190 +169,234 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.eco, color: MyApp.ecoGreen, size: 32),
-                      const SizedBox(width: 12),
-                      Text(
-                        _uid.isEmpty ? 'Welcome!' : 'Hi, $_uid',
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Scan, earn XP, save the planet'),
-                ],
-              ),
-            ),
-          ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.emoji_events, color: MyApp.ecoGreen),
-                      const SizedBox(width: 8),
-                      const Text('Progress', style: TextStyle(fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('XP: 120   Level: 3   Streak: 5d'),
-                  const SizedBox(height: 4),
-                  const Text('60 XP until next badge'),
-                ],
-              ),
-            ),
-          ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(
-                    tracking ? Icons.location_on : Icons.location_off,
-                    color: MyApp.ecoGreen,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Supermarket check-in', style: TextStyle(fontSize: 15)),
-                        const SizedBox(height: 2),
-                        Text(
-                          tracking
-                              ? 'GPS tracking active'
-                              : 'Enable to earn XP',
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: tracking,
-                    onChanged: (value) {
-                      if (value) {
-                        startTracking();
-                      } else {
-                        stopTracking();
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_locations.isNotEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.gps_fixed, color: MyApp.ecoGreen),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Location Updates',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 160,
-                      child: ListView.builder(
-                        itemCount: _locations.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.location_on, size: 18),
-                            title: Text(
-                              _locations[index],
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.flag, color: MyApp.ecoGreen),
-                      const SizedBox(width: 8),
-                      const Text('Weekly Challenge', style: TextStyle(fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Scan 5 products with Eco-Score A or B'),
-                  const SizedBox(height: 4),
-                  const Text('Reward: "Madrid Verde" badge'),
-                ],
-              ),
-            ),
-          ),
-        ],
+      body: FutureBuilder<GameStats>(
+        future: _statsFuture,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final s = snapshot.data!;
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _greetingCard(),
+              const SizedBox(height: 12),
+              _levelCard(s),
+              const SizedBox(height: 12),
+              _statsRow(s),
+              const SizedBox(height: 12),
+              _weeklyCard(s),
+              const SizedBox(height: 12),
+              _badgesCard(s),
+            ],
+          );
+        },
       ),
     );
   }
 
-  void startTracking() async {
-    final locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10,
+  Widget _greetingCard() {
+    return Card(
+      color: MyApp.ecoGreen,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.eco, color: Colors.white, size: 36),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _uid.isEmpty ? 'Welcome!' : 'Hi, $_uid',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Scan products to discover their Eco-Score',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
-    }
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error('Location permissions are permanently denied');
-    }
-    _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
-      (Position position) {
-        db.insertCoordinate(position);
-        final timestamp = DateTime.now().toIso8601String();
-        final locationEntry =
-            '$timestamp\nLat: ${position.latitude.toStringAsFixed(4)}, Long: ${position.longitude.toStringAsFixed(4)}';
-        setState(() {
-          _locations.insert(0, locationEntry);
-        });
-      },
-    );
-    if (mounted) setState(() {});
   }
 
-  void stopTracking() {
-    _positionStreamSubscription?.cancel();
-    _positionStreamSubscription = null;
-    if (mounted) setState(() {});
+  Widget _levelCard(GameStats s) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: MyApp.ecoGreen,
+                  child: Text(
+                    '${s.level}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Level ${s.level}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('${s.xp} XP total'),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: s.xpIntoLevel / GameStats.xpPerLevel,
+                minHeight: 10,
+                backgroundColor: Colors.grey.shade300,
+                color: MyApp.ecoGreen,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text('${s.xpToNextLevel} XP to level ${s.level + 1}'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statsRow(GameStats s) {
+    return Row(
+      children: [
+        _statTile(Icons.local_fire_department, '${s.streak}', 'Day streak'),
+        const SizedBox(width: 8),
+        _statTile(Icons.qr_code_scanner, '${s.scanCount}', 'Scans'),
+        const SizedBox(width: 8),
+        _statTile(Icons.emoji_events, '${s.badges.length}', 'Badges'),
+      ],
+    );
+  }
+
+  Widget _statTile(IconData icon, String value, String label) {
+    return Expanded(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Column(
+            children: [
+              Icon(icon, color: MyApp.ecoGreen),
+              const SizedBox(height: 4),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(label, style: const TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _weeklyCard(GameStats s) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.flag, color: MyApp.ecoGreen),
+                const SizedBox(width: 8),
+                const Text('Weekly Challenge',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('${s.weeklyCount} / ${s.weeklyGoal} scans this week'),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: (s.weeklyCount / s.weeklyGoal).clamp(0.0, 1.0),
+                minHeight: 10,
+                backgroundColor: Colors.grey.shade300,
+                color: MyApp.ecoGreen,
+              ),
+            ),
+            if (s.weeklyDone)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: MyApp.ecoGreen, size: 18),
+                    const SizedBox(width: 6),
+                    const Text('Done! "Madrid Verde" badge earned'),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _badgesCard(GameStats s) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.emoji_events, color: MyApp.ecoGreen),
+                const SizedBox(width: 8),
+                Text(
+                  'Badges (${s.badges.length}/${GameStats.badgeLabels.length})',
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: GameStats.badgeLabels.entries.map((e) {
+                final earned = s.badges.contains(e.key);
+                return Chip(
+                  avatar: Icon(
+                    earned ? Icons.check_circle : Icons.lock,
+                    size: 18,
+                    color: earned ? MyApp.ecoGreen : Colors.grey,
+                  ),
+                  label: Text(e.value),
+                  backgroundColor:
+                      earned ? const Color(0xFFC8E6C9) : Colors.grey.shade200,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -325,7 +404,6 @@ class _SplashScreenState extends State<SplashScreen> {
     print("dispose: Cleaning up before the state is destroyed.");
     _uidController.dispose();
     _tokenController.dispose();
-    _positionStreamSubscription?.cancel();
     super.dispose();
   }
 }
