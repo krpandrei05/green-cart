@@ -54,6 +54,16 @@ It's a student project, not a real sustainability tool — but it was a fun way 
 
 > Screenshots were captured automatically on an Android emulator with [Maestro](https://maestro.mobile.dev/) — the flow lives in [maestro/screenshots.yaml](maestro/screenshots.yaml). They show a fresh account (empty game state) before any product has been scanned.
 
+## Demo video
+
+A short walkthrough of the app — sign-up, scanning a product, Eco-Score & gamification, history and the map:
+
+<a href="https://upm365.sharepoint.com/:v:/s/GreenCart/IQAHNd-vt137T6OYZiHzEuG-AXe7fPPMJqbj8pYKtBAHTX4?e=aRBcTh">
+  <img src="img/03_home.png" alt="EcoScan Madrid demo video" width="200"/>
+</a>
+
+▶ [Watch the demo (SharePoint)](https://upm365.sharepoint.com/:v:/s/GreenCart/IQAHNd-vt137T6OYZiHzEuG-AXe7fPPMJqbj8pYKtBAHTX4?e=aRBcTh)
+
 ## Features
 
 ### What the user can do

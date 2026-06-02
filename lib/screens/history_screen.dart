@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -117,10 +116,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       // Read pattern: live StreamBuilder on the user's scans node.
       body: StreamBuilder<DatabaseEvent>(
-        // timeout so an unreachable / not-yet-provisioned RTDB falls through to
-        // the empty state instead of spinning forever.
-        stream: (db.scansStream ?? const Stream<DatabaseEvent>.empty())
-            .timeout(const Duration(seconds: 8)),
+        stream: db.scansStream ?? const Stream<DatabaseEvent>.empty(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
