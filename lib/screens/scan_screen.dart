@@ -3,7 +3,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../app.dart';
-import '../db/database_helper.dart';
+import '../services/realtime_db.dart';
 import '../models/game_stats.dart';
 import '../models/product.dart';
 import '../services/off_service.dart';
@@ -17,7 +17,7 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   final MobileScannerController _controller = MobileScannerController();
-  final DatabaseHelper db = DatabaseHelper.instance;
+  final RealtimeDb db = RealtimeDb.instance;
   bool _busy = false;
 
   @override
@@ -46,47 +46,61 @@ class _ScanScreenState extends State<ScanScreen> {
     if (code == null) return;
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
+    try {
+      // pause the camera so the same frame can't re-fire and double-count
+      await _controller.stop();
+      final product = await OffService.fetchProduct(code);
+      if (!mounted) return;
+      if (product == null) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Product not found ($code)')),
+        );
+        return;
+      }
 
-    final product = await OffService.fetchProduct(code);
-    if (!mounted) return;
-    if (product == null) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Product not found ($code)')),
+      final poor = product.isPoorEco;
+      final position = await _currentPosition();
+      await db.insertScan(
+        product,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
       );
-      setState(() => _busy = false);
-      return;
-    }
+      final stats = await db.computeGameStats();
+      final newly = await db.awardBadges(stats);
+      if (!mounted) return;
 
-    final poor = product.isPoorEco;
-
-    final position = await _currentPosition();
-    await db.insertScan(
-      product,
-      latitude: position?.latitude,
-      longitude: position?.longitude,
-    );
-    final stats = await db.computeGameStats();
-    final newly = await db.awardBadges(stats);
-    if (!mounted) return;
-
-    Fluttertoast.showToast(
-      msg: 'Scanned! (XP ${stats.xp}, Lv ${stats.level})',
-      backgroundColor: MyApp.ecoGreen,
-      textColor: Colors.white,
-    );
-    if (poor) {
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red.shade700,
-          content: Text(
-            'Poor Eco-Score (${product.ecoGrade.toUpperCase()}) — '
-            'try a greener alternative!',
+      Fluttertoast.showToast(
+        msg: 'Scanned! (XP ${stats.xp}, Lv ${stats.level})',
+        backgroundColor: MyApp.ecoGreen,
+        textColor: Colors.white,
+      );
+      if (poor) {
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade700,
+            content: Text(
+              'Poor Eco-Score (${product.ecoGrade.toUpperCase()}) — '
+              'try a greener alternative!',
+            ),
           ),
-        ),
-      );
+        );
+      }
+      await _showResultDialog(product, newly, poor);
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red.shade700,
+            content: Text('Scan failed: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+        await _controller.start();
+      }
     }
-    await _showResultDialog(product, newly, poor);
-    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _showResultDialog(Product product, Set<String> newly, bool poor) {

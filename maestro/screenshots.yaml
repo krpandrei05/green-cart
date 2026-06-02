@@ -1,0 +1,86 @@
+# Screenshot capture flow — registers a throwaway account, then snaps each screen.
+# Run with a unique email so register never hits "email-already-in-use":
+#   ~/.maestro/bin/maestro --device emulator-5554 test \
+#     -e EMAIL="demo$(date +%s)@ecoscan.test" maestro/screenshots.yaml
+# Pre-grant Camera + Location first (so the permission gate passes):
+#   adb -s emulator-5554 shell pm grant com.example.flutter_project android.permission.CAMERA
+#   adb -s emulator-5554 shell pm grant com.example.flutter_project android.permission.ACCESS_FINE_LOCATION
+appId: com.example.flutter_project
+---
+- launchApp:
+    clearState: true
+# Firebase.initializeApp() is awaited before runApp(), so the first frames are
+# blank — wait for the login screen to actually render.
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 60000
+- takeScreenshot: "img/01_login"
+
+# toggle to register
+- tapOn: "No account? Create an account"
+- assertVisible: "Create your account"
+- takeScreenshot: "img/02_register"
+
+# fill the register form
+- tapOn:
+    text: "Username"
+- inputText: "EcoFan"
+- tapOn:
+    text: "Email"
+- inputText: "${EMAIL}"
+- tapOn:
+    text: "Password"
+- inputText: "ecoscan123"
+- tapOn:
+    text: "Confirm password"
+- inputText: "ecoscan123"
+- hideKeyboard
+- tapOn: "Create account"
+
+# permission gate fallback (we pre-grant via adb, but just in case)
+- runFlow:
+    when:
+      visible: "Grant access"
+    commands:
+      - tapOn: "I already enabled them"
+
+# HOME — wait for the bottom nav (MainScreen is up), then let the dashboard
+# finish loading (RTDB read times out → cards render) before snapping.
+- extendedWaitUntil:
+    visible:
+      text: ".*History.*"
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 90000
+- takeScreenshot: "img/03_home"
+
+# HISTORY
+- tapOn:
+    text: ".*History.*"
+- waitForAnimationToEnd:
+    timeout: 30000
+- takeScreenshot: "img/04_history"
+
+# MAP
+- tapOn:
+    text: ".*Map.*"
+- waitForAnimationToEnd:
+    timeout: 30000
+- takeScreenshot: "img/05_map"
+
+# SETTINGS (gear icon in the Home AppBar)
+- tapOn:
+    text: ".*Home.*"
+- tapOn: "Settings"
+- waitForAnimationToEnd:
+    timeout: 30000
+- takeScreenshot: "img/06_settings"
+- back
+
+# SCAN (pushed camera screen)
+- tapOn:
+    text: ".*Scan.*"
+- waitForAnimationToEnd:
+    timeout: 30000
+- takeScreenshot: "img/07_scan"
+- back

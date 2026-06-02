@@ -56,3 +56,7 @@ ruvector.db
 
 lib/exercices_w3/
 CLAUDE.md
+
+# Course deliverables (keep locally, not part of the app — avoid accidental commit)
+DOCS/
+VIDEO_WEEK5.md

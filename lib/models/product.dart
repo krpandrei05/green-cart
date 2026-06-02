@@ -5,7 +5,6 @@ class Product {
   final int? ecoScore;
   final String nutriGrade;
   final String origin;
-  final String imageUrl;
 
   const Product({
     required this.barcode,
@@ -14,7 +13,6 @@ class Product {
     required this.ecoScore,
     required this.nutriGrade,
     required this.origin,
-    required this.imageUrl,
   });
 
   factory Product.fromJson(String barcode, Map<String, dynamic> p) {
@@ -36,7 +34,6 @@ class Product {
       ecoScore: ecoScore,
       nutriGrade: (p['nutriscore_grade'] ?? 'unknown').toString().toLowerCase(),
       origin: (p['origins'] ?? '').toString(),
-      imageUrl: (p['image_front_small_url'] ?? '').toString(),
     );
   }
 

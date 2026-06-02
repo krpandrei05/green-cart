@@ -1,0 +1,17 @@
+# Smoke: app launches, auth-gate routes to the app (logged-in session),
+# Map tab opens the snippet "Map View" screen.
+# Note: Flutter exposes nav labels as "Map\nTab 3 of 4"; Maestro full-matches
+# regex, so use ".*Map.*".
+# The app has a permission gate (Camera + Location). Pre-grant them so the gate
+# passes (else the run stops on the "Grant access" screen):
+#   adb shell pm grant com.example.flutter_project android.permission.CAMERA
+#   adb shell pm grant com.example.flutter_project android.permission.ACCESS_FINE_LOCATION
+appId: com.example.flutter_project
+---
+- launchApp
+- assertVisible: "EcoScan Madrid"
+- assertVisible:
+    text: ".*Map.*"
+- tapOn:
+    text: ".*Map.*"
+- assertVisible: "Map View"

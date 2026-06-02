@@ -1,0 +1,19 @@
+# Logout flow: from the app (logged in), open Settings via the gear
+# icon (top-right of the Home AppBar), confirm Logout, and verify the auth-gate
+# returns to the login screen ("Sign in"). Proves the popUntil fix works.
+# The app has a permission gate (Camera + Location). Pre-grant them so the gate
+# passes (else the Home AppBar/gear isn't shown):
+#   adb shell pm grant com.example.flutter_project android.permission.CAMERA
+#   adb shell pm grant com.example.flutter_project android.permission.ACCESS_FINE_LOCATION
+appId: com.example.flutter_project
+---
+- launchApp
+- assertVisible: "EcoScan Madrid"
+- tapOn:
+    point: "92%, 7%"
+- assertVisible: "Settings"
+- tapOn:
+    text: ".*Logout.*" # the ElevatedButton opens the confirmation dialog
+- assertVisible: "Are you sure you want to logout?"
+- tapOn: "Logout" # dialog's Logout button (only one matchable while modal)
+- assertVisible: "Sign in"

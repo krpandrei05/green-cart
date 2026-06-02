@@ -1,31 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:logger/logger.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app.dart';
-import '../db/database_helper.dart';
+import '../services/realtime_db.dart';
 import '../models/game_stats.dart';
 import 'settings_screen.dart';
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  final logger = Logger();
-  final _uidController = TextEditingController();
-  final _tokenController = TextEditingController();
-  DatabaseHelper db = DatabaseHelper.instance;
+class _HomeScreenState extends State<HomeScreen> {
+  RealtimeDb db = RealtimeDb.instance;
   String _uid = '';
   late Future<GameStats> _statsFuture;
 
   @override
   void initState() {
     super.initState();
-    print("initState: Initial state setup.");
     _statsFuture = db.computeGameStats();
     _loadPrefs();
   }
@@ -36,77 +31,10 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print("didChangeDependencies: Dependencies updated.");
-  }
-
-  @override
-  void didUpdateWidget(SplashScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    print("didUpdateWidget: The widget has been updated from the parent.");
-  }
-
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    String? uid = prefs.getString('uid');
-    String? token = prefs.getString('token');
-    if (uid == null || token == null) {
-      _showInputDialog();
-    } else {
-      logger.d("UID: $uid, Token: $token");
-      setState(() => _uid = uid);
-    }
-  }
-
-  Future<void> _showInputDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('EcoScanner Profile'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                TextField(
-                  controller: _uidController,
-                  decoration: InputDecoration(hintText: "Username"),
-                ),
-                TextField(
-                  controller: _tokenController,
-                  decoration: InputDecoration(hintText: "API Token"),
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Save'),
-              onPressed: () async {
-                final uid = _uidController.text.trim();
-                final token = _tokenController.text.trim();
-                if (uid.isEmpty || token.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill in both fields to continue.'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  return;
-                }
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('uid', uid);
-                await prefs.setString('token', token);
-                setState(() => _uid = uid);
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
+    final uid = prefs.getString('uid');
+    if (uid != null) setState(() => _uid = uid);
   }
 
   // share progress
@@ -122,6 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
               onTap: () async {
                 Navigator.pop(context);
                 final stats = await db.computeGameStats();
+                if (!mounted) return;
                 await Share.share(
                   'My EcoScan Madrid progress: ${stats.xp} XP, '
                   'Level ${stats.level}, ${stats.streak}-day streak, '
@@ -137,10 +66,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print("build: Building the user interface.");
-    logger.d("Debug message");
-    logger.w("Warning message!");
-    logger.e("Error message!!");
     return Scaffold(
       backgroundColor: MyApp.ecoBackground,
       appBar: AppBar(
@@ -160,6 +85,7 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
             onPressed: () {
               Navigator.push(
                 context,
@@ -397,13 +323,5 @@ class _SplashScreenState extends State<SplashScreen> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    print("dispose: Cleaning up before the state is destroyed.");
-    _uidController.dispose();
-    _tokenController.dispose();
-    super.dispose();
   }
 }

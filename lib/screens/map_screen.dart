@@ -3,7 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../app.dart';
-import '../db/database_helper.dart';
+import '../services/realtime_db.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -29,19 +29,22 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> loadMarkers() async {
-    final scans = await DatabaseHelper.instance.getScans();
+    final scans = await RealtimeDb.instance.getScans();
     final List<Marker> loadedMarkers = [];
     for (final s in scans) {
       if (s['latitude'] == null || s['longitude'] == null) continue;
       loadedMarkers.add(
         Marker(
-          point: LatLng(s['latitude'], s['longitude']),
+          point: LatLng(
+            (s['latitude'] as num).toDouble(),
+            (s['longitude'] as num).toDouble(),
+          ),
           width: 80,
           height: 80,
           child: Icon(
             Icons.location_pin,
             size: 50,
-            color: MyApp.gradeColor((s['eco_grade'] ?? '').toString()),
+            color: MyApp.gradeColor((s['ecoGrade'] ?? '').toString()),
           ),
         ),
       );
@@ -63,11 +66,14 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> loadRouteCoordinates() async {
-    final scans = await DatabaseHelper.instance.getScans();
+    final scans = await RealtimeDb.instance.getScans();
     setState(() {
       routeCoordinates = scans
           .where((s) => s['latitude'] != null && s['longitude'] != null)
-          .map((s) => LatLng(s['latitude'], s['longitude']))
+          .map((s) => LatLng(
+                (s['latitude'] as num).toDouble(),
+                (s['longitude'] as num).toDouble(),
+              ))
           .toList();
     });
   }

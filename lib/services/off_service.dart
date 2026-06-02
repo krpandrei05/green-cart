@@ -10,8 +10,8 @@ class OffService {
       '/api/v2/product/$barcode.json',
       {
         'fields': 'code,product_name,product_name_en,product_name_fr,'
-            'ecoscore_grade,ecoscore_score,nutriscore_grade,origins,'
-            'image_front_small_url',
+            'ecoscore_grade,environmental_score_grade,ecoscore_score,'
+            'nutriscore_grade,origins',
       },
     );
     final response = await httpClient.get(uri, headers: {

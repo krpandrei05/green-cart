@@ -47,6 +47,8 @@ class DefaultFirebaseOptions {
     projectId: 'ecoscan-madrid',
     authDomain: 'ecoscan-madrid.firebaseapp.com',
     storageBucket: 'ecoscan-madrid.firebasestorage.app',
+    databaseURL:
+        'https://ecoscan-madrid-default-rtdb.europe-west1.firebasedatabase.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -55,6 +57,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '269879792675',
     projectId: 'ecoscan-madrid',
     storageBucket: 'ecoscan-madrid.firebasestorage.app',
+    databaseURL:
+        'https://ecoscan-madrid-default-rtdb.europe-west1.firebasedatabase.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -63,6 +67,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '269879792675',
     projectId: 'ecoscan-madrid',
     storageBucket: 'ecoscan-madrid.firebasestorage.app',
+    databaseURL:
+        'https://ecoscan-madrid-default-rtdb.europe-west1.firebasedatabase.app',
     iosBundleId: 'com.example.flutterProject',
   );
 
@@ -72,6 +78,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '269879792675',
     projectId: 'ecoscan-madrid',
     storageBucket: 'ecoscan-madrid.firebasestorage.app',
+    databaseURL:
+        'https://ecoscan-madrid-default-rtdb.europe-west1.firebasedatabase.app',
     iosBundleId: 'com.example.flutterProject',
   );
 
@@ -82,5 +90,7 @@ class DefaultFirebaseOptions {
     projectId: 'ecoscan-madrid',
     authDomain: 'ecoscan-madrid.firebaseapp.com',
     storageBucket: 'ecoscan-madrid.firebasestorage.app',
+    databaseURL:
+        'https://ecoscan-madrid-default-rtdb.europe-west1.firebasedatabase.app',
   );
 }

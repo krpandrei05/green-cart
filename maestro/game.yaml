@@ -1,0 +1,28 @@
+# Full game flow (needs credentials — run with your own account):
+#   ~/.maestro/bin/maestro --device emulator-5554 test \
+#       -e EMAIL=you@example.com -e PASSWORD=yourpassword maestro/game.yaml
+# The app now has a permission gate (Camera + Location). Pre-grant them on the
+# emulator so the gate passes, otherwise the flow stops on the "Grant access" screen:
+#   adb shell pm grant com.example.flutter_project android.permission.CAMERA
+#   adb shell pm grant com.example.flutter_project android.permission.ACCESS_FINE_LOCATION
+# Verifies: login -> gamified dashboard (Level) -> Map tiles load.
+appId: com.example.flutter_project
+---
+- launchApp
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn:
+          text: ".*Email.*"
+      - inputText: "${EMAIL}"
+      - tapOn:
+          text: ".*Password.*"
+      - inputText: "${PASSWORD}"
+      - tapOn: "Login"
+- assertVisible: "EcoScan Madrid"
+- assertVisible:
+    text: ".*Level.*" # gamified dashboard (level + XP bar)
+- tapOn:
+    text: ".*Map.*"
+- assertVisible: "Map View"

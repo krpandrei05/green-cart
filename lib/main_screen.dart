@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app.dart';
-import 'screens/splash_screen.dart';
-import 'screens/second_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/history_screen.dart';
 import 'screens/scan_screen.dart';
 import 'screens/map_screen.dart';
 
@@ -19,8 +19,8 @@ class _MainScreenState extends State<MainScreen> {
   static const int _scanIndex = 2;
 
   List<Widget> get _screens => [
-        SplashScreen(key: ValueKey('home_$_dataVersion')),
-        SecondScreen(key: ValueKey('hist_$_dataVersion')),
+        HomeScreen(key: ValueKey('home_$_dataVersion')),
+        const HistoryScreen(), // live via StreamBuilder — no key churn needed
         const SizedBox.shrink(),
         MapScreen(key: ValueKey('map_$_dataVersion')),
       ];

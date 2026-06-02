@@ -44,10 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _saveProfile(User? user, String username) async {
+  Future<void> _saveProfile(String username) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('uid', username);
-    await prefs.setString('token', user?.uid ?? 'firebase');
   }
 
   Future<void> _login() async {
@@ -58,7 +57,6 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       )).user;
       await _saveProfile(
-        user,
         user?.displayName ?? user?.email?.split('@').first ?? 'EcoScanner',
       );
     } on FirebaseAuthException catch (e) {
@@ -91,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       )).user;
       await user?.updateDisplayName(username);
-      await _saveProfile(user, username);
+      await _saveProfile(username);
     } on FirebaseAuthException catch (e) {
       _showMessage(_message(e.code));
     } catch (e) {
@@ -143,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _isRegister ? 'Create your account' : 'Iniciar sesión',
+                  _isRegister ? 'Create your account' : 'Sign in',
                   style: const TextStyle(fontSize: 16, color: Colors.black54),
                 ),
                 const SizedBox(height: 28),

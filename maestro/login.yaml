@@ -1,0 +1,11 @@
+# Login screen: when logged out, the auth-gate shows the snippet login
+# screen with email + password fields and a Login button.
+appId: com.example.flutter_project
+---
+- launchApp
+- assertVisible: "Sign in"
+- assertVisible: "Login"
+- assertVisible:
+    text: ".*Email.*"
+- assertVisible:
+    text: ".*Password.*"

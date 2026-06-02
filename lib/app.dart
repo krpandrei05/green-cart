@@ -51,11 +51,11 @@ class MyApp extends StatelessWidget {
               // logged in
               return const PermissionGate(child: MainScreen());
             }
-            return const LoginScreen(); // Usuario no está logueado
+            return const LoginScreen(); // not logged in
           }
           return const Center(
             child: CircularProgressIndicator(),
-          ); // Esperando conexión
+          ); // waiting for connection
         },
       ),
     );
