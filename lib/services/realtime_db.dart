@@ -35,6 +35,8 @@ class RealtimeDb {
       {double? latitude, double? longitude}) async {
     final ref = _scansRef;
     if (ref == null) return;
+    // timeout so a missing / unreachable RTDB surfaces as an error instead of
+    // hanging the scan flow forever (the caller shows "Scan failed").
     await ref.push().set({
       'barcode': product.barcode,
       'name': product.name,
@@ -44,7 +46,7 @@ class RealtimeDb {
       'latitude': latitude,
       'longitude': longitude,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
-    });
+    }).timeout(const Duration(seconds: 8));
   }
 
   Future<List<Map<String, dynamic>>> getScans() async {
@@ -132,7 +134,7 @@ class RealtimeDb {
     final newly = clean.difference(persisted);
     if (newly.isNotEmpty) {
       final updates = <String, Object?>{for (final id in newly) id: true};
-      await ref.update(updates);
+      await ref.update(updates).timeout(const Duration(seconds: 8));
     }
     return newly;
   }

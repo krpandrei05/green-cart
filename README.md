@@ -139,9 +139,12 @@ flutter build apk --debug   # Android APK
 | Tests | flutter_test (27 unit tests) |
 | Min SDK / iOS | Android 23 / iOS 13 (required by Firebase) |
 
-## Author
+## Authors
+
+Two second-year students at UPM:
 
 - **Chiriac Alex** (GitHub: [@ChiriacAlex](https://github.com/ChiriacAlex)) — alex.chiriac@alumnos.upm.es
+- **Andrei-Costin Carp** (GitHub: [@krpandrei05](https://github.com/krpandrei05)) — andrei-costin.carp@alumnos.upm.es
 
 ## Honest notes
 

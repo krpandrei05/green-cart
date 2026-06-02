@@ -22,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
         HomeScreen(key: ValueKey('home_$_dataVersion')),
         const HistoryScreen(), // live via StreamBuilder — no key churn needed
         const SizedBox.shrink(),
-        MapScreen(key: ValueKey('map_$_dataVersion')),
+        MapScreen(dataVersion: _dataVersion), // reloads on scan, keeps camera
       ];
 
   void _onItemTapped(int index) {
